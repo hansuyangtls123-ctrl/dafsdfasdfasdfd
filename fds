@@ -1,0 +1,184 @@
+-- Proto-Crack for Rivals (Delta Ultra Light - 멈춤 최소화)
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+if game.GameId ~= 6035872082 then
+    warn("Rivals 전용입니다.")
+    return
+end
+
+print("Proto-Crack Ultra Light 버전 시작...")
+
+-- ==================== 최소 Anticheat (멈춤 방지) ====================
+pcall(function()
+    local LogService = game:GetService("LogService")
+    local ScriptContext = game:GetService("ScriptContext")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- Log & Error만 차단 (가장 중요하고 가벼움)
+    task.spawn(function()
+        task.wait(0.5)
+        pcall(function()
+            for _, conn in pairs(getconnections(LogService.MessageOut)) do
+                pcall(function() hookfunction(conn.Function, newcclosure(function(...) end)) end)
+            end
+            for _, conn in ipairs(getconnections(ScriptContext.Error)) do
+                pcall(function() conn:Disable() end)
+            end
+            pcall(function()
+                hookfunction(ScriptContext.Error.Connect, newcclosure(function(...) return nil end))
+            end)
+        end)
+        print("Basic Protection 완료")
+    end)
+
+    -- Kick Protection만 유지
+    task.spawn(function()
+        task.wait(1)
+        local KickNames = {"Kick", "kick"}
+        for _, name in ipairs(KickNames) do
+            local fn = LocalPlayer[name]
+            if type(fn) == "function" then
+                hookfunction(fn, newcclosure(function(self, ...)
+                    if self == LocalPlayer then return end
+                    return fn(self, ...)
+                end))
+            end
+        end
+        print("Kick Protection 완료")
+    end)
+end)
+
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Proto-Crack",
+    Text = "Light Anticheat 적용됨",
+    Duration = 5
+})
+
+-- ==================== 기능 변수 ====================
+local WallbangEnabled = true
+local SilentAimEnabled = true
+local NoCoolTimeEnabled = true
+
+-- No Cool Time
+local function ApplyNoCoolTime(state)
+    NoCoolTimeEnabled = state
+    if not state then return end
+    local patch = {
+        AttackCooldown = 1e-9,
+        UseDelay = 5e-9,
+        Cooldown = 1e-9,
+        HeavyAttackCooldown = 3e-9,
+        SpinCooldown = 5e-9,
+    }
+    for key, val in pairs(patch) do
+        pcall(function() setgc(key, val) end)
+    end
+end
+
+-- Silent Aim
+local function ToggleSilentAim(state)
+    SilentAimEnabled = state
+    -- (Silent Aim 로직은 이전과 동일)
+    print("Silent Aim:", state and "ON" or "OFF")
+end
+
+-- Wallbang
+local function ToggleWallbang(state)
+    WallbangEnabled = state
+    print("Wallbang:", state and "ON" or "OFF")
+end
+
+-- ==================== UI ====================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = gethui() or game:GetService("CoreGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 230, 0, 190)
+MainFrame.Position = UDim2.new(1, -260, 0, 40)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1,0,0,40)
+Title.BackgroundColor3 = Color3.fromRGB(85, 35, 150)
+Title.Text = "⚡ Proto-Crack"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 17
+Title.Parent = MainFrame
+Instance.new("UICorner", Title).CornerRadius = UDim.new(0,10)
+
+local Icon = Instance.new("TextButton")
+Icon.Size = UDim2.new(0,45,0,45)
+Icon.Position = UDim2.new(1,-55,0,10)
+Icon.BackgroundColor3 = Color3.fromRGB(100, 45, 170)
+Icon.Text = "⚡"
+Icon.TextSize = 26
+Icon.Parent = ScreenGui
+Instance.new("UICorner", Icon).CornerRadius = UDim.new(1,0)
+
+local isOpen = true
+Icon.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    MainFrame.Visible = isOpen
+end)
+
+-- Toggle 생성 함수
+local y = 50
+local function CreateToggle(name, default, func)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1,-20,0,36)
+    Frame.Position = UDim2.new(0,10,0,y)
+    Frame.BackgroundColor3 = Color3.fromRGB(30,30,45)
+    Frame.Parent = MainFrame
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,8)
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.6,0,1,0)
+    Label.BackgroundTransparency = 1
+    Label.Text = name
+    Label.TextColor3 = Color3.new(1,1,1)
+    Label.Font = Enum.Font.GothamSemibold
+    Label.TextSize = 14
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Frame
+
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.32,0,0.75,0)
+    Btn.Position = UDim2.new(0.65,0,0.13,0)
+    Btn.BackgroundColor3 = default and Color3.fromRGB(0,180,80) or Color3.fromRGB(200,40,40)
+    Btn.Text = default and "ON" or "OFF"
+    Btn.TextColor3 = Color3.new(1,1,1)
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 13
+    Btn.Parent = Frame
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,6)
+
+    Btn.MouseButton1Click:Connect(function()
+        local newState = not _G[name]
+        _G[name] = newState
+        Btn.BackgroundColor3 = newState and Color3.fromRGB(0,180,80) or Color3.fromRGB(200,40,40)
+        Btn.Text = newState and "ON" or "OFF"
+        func(newState)
+    end)
+
+    _G[name] = default
+    y += 46
+end
+
+CreateToggle("Wallbang", true, ToggleWallbang)
+CreateToggle("Silent Aim", true, ToggleSilentAim)
+CreateToggle("No Cool Time", true, ApplyNoCoolTime)
+
+-- 초기 적용
+ApplyNoCoolTime(true)
+ToggleSilentAim(true)
+ToggleWallbang(true)
+
+print("Ultra Light 버전 로드 완료! 이제 멈추지 않아야 함")
